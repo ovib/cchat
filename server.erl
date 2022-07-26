@@ -9,7 +9,7 @@ start(ServerAtom) ->
     % - Spawn a new process which waits for a message, handles it, then loops infinitely
     % - Register this process to ServerAtom
     % - Return the process ID
-    genserver:start(ServerAtom, #{}, fun server_loop_function/2). %state in an empty map
+    genserver:start(ServerAtom, [], fun server_loop_function/2). % Second argument is State = list of channels!
 
 % Stop the server process registered to the given name,
 % together with any other associated processes
@@ -23,42 +23,23 @@ stop(ServerAtom) ->
 %   - takes 2 params : state, request message
 %   - returns a tuple: response message, new state
 
-% TODO: MAKE SURE user_already_joined IS RECOVERABLE
-server_loop_function(State, {join, Nick, Channel}) -> 
+% TODO: MAKE SURE user_already_joined used by gui. At the moment nothing is showed!
+server_loop_function(Channels, {join, _, Nick, Channel}) -> 
+     io:format("Called server loop function. Channels: ~p~n ", [Channels]),
 
     %remove '#' from the name of the channel and convert it to atom for convenience 
     ChannelAtom = list_to_atom(string:slice(Channel, 1)), 
 
-
-    io:format("SERVER STATE BEFORE LOOP: ~p~n", [State]),
-
-    case channel_exists(ChannelAtom, State) of
+    case lists:member(ChannelAtom, Channels) of 
         true -> 
-            case(user_in_channel(Nick, ChannelAtom, State)) of 
-                true ->  {reply, {error, user_already_joined, "You are already a member of this channel!"}, State};
-                false -> {reply, ok, add_user(Nick, ChannelAtom, State)}  % update list of nicks 
+            io:format("Channel ~p iS a member of Channels ~p. Trying to join existing channel with Nick=~p~n", [ChannelAtom, Channels, Nick]),
+            case catch(genserver:request(ChannelAtom, {try_join, Nick})) of
+                ok -> {reply, ok, Channels}; 
+                {error, Atom, Text} -> {reply, {error, Atom, Text}, Channels} %forward error to Client!
             end;
         false -> 
+            io:format("Channel ~p IS NOT a member of Channels ~p~n ", [ChannelAtom, Channels]),
             channel:new_channel(ChannelAtom, Nick),
-            {reply, ok, add_channel(ChannelAtom, Nick, State)} %reply with updated server state (the map with chanel=>members[])!
-    end
-.
-
-channel_exists(Channel, Map) -> 
-    maps:is_key(Channel, Map)
-.
-
-user_in_channel(User, Channel, Map) -> 
-    lists:member(User, maps:get(Channel, Map))
-.
-
-% adds nickname to Channel and returns the updated map
-add_user(Nick, Channel, Map) -> 
-    maps:put(Channel, [Nick | maps:get(Channel, Map)], Map)
-.
-
-% add a new key-value pair Channel => Value to the map and returns an updated copy 
-% value is usually the name of the first user when implicitly creating a new channel
-add_channel(Channel, Value, Map) ->
-    maps:put(Channel, [Value], Map)
+            {reply, ok, [ChannelAtom | Channels]} 
+        end
 .

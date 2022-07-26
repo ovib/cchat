@@ -10,13 +10,14 @@ new_channel(Atom, FirstMember) ->
 % - This function is the body of the server:
 %   - takes 2 params : state, request message
 %   - returns a tuple: response message, new state
-channel_loop_function(Members, {join, Member}) ->
+channel_loop_function(Members, {try_join, Member}) ->
     case lists:member(Member, Members) of
-        true -> {reply, {error, user_already_joined, "You are already a member of this channel!"}, Members};
+        true -> 
+            io:format("Try join failed. username ~p already in list  ~p !~n ", [Member, Members]),
+            {reply, {error, user_already_joined, "You are already a member of this channel!"}, Members};
         false -> 
             io:format("New list of member of channel ~p: ~p~n ", [self(), [Member|Members]]),
             {reply, ok, [Member | Members]}
-    end
-.
+    end.
 
 

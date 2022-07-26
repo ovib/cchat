@@ -31,7 +31,7 @@ handle(St, {join, Channel}) ->
     % TODO: Implement this function
     % {reply, ok, St} ;
     %{reply, {error, not_implemented, "join not implemented"}, St} ;
-    Response = genserver:request(St#client_st.server, {join, self(), St#client_st.nick, Channel}), %RESPONSE FROM SERVER
+    Response = genserver:request(St#client_st.server, {join, St#client_st.nick, Channel}), %RESPONSE FROM SERVER
     case Response of 
         ok -> {reply, ok, St}; % RESPOND TO GUI
     Error ->

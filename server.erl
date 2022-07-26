@@ -9,7 +9,7 @@ start(ServerAtom) ->
     % - Spawn a new process which waits for a message, handles it, then loops infinitely
     % - Register this process to ServerAtom
     % - Return the process ID
-    genserver:start(ServerAtom, #{}, fun server_loop_function/2). %state in and empty map
+    genserver:start(ServerAtom, #{}, fun server_loop_function/2). %state in an empty map
 
 % Stop the server process registered to the given name,
 % together with any other associated processes
@@ -24,23 +24,23 @@ stop(ServerAtom) ->
 %   - returns a tuple: response message, new state
 
 % TODO: MAKE SURE user_already_joined IS RECOVERABLE
-% TODO: CREATE A NEW PROCESS FOR EACH CHANNEL! paralleleize everything!
-server_loop_function(State, {join, ClientPid, Nick, Channel}) -> 
+server_loop_function(State, {join, Nick, Channel}) -> 
 
-    ChannelName = string:slice(Channel, 1), %remove # from the name of the channel
+    %remove '#' from the name of the channel and convert it to atom for convenience 
+    ChannelAtom = list_to_atom(string:slice(Channel, 1)), 
 
-    %io:format("STATE BEFORE LOOP: ~p~n", [State]),
-    % io:format("Client: ~p~n", [ClientPid]),
 
-    case channel_exists(ChannelName, State) of
+    io:format("SERVER STATE BEFORE LOOP: ~p~n", [State]),
+
+    case channel_exists(ChannelAtom, State) of
         true -> 
-            case(user_in_channel(Nick, ChannelName, State)) of 
+            case(user_in_channel(Nick, ChannelAtom, State)) of 
                 true ->  {reply, {error, user_already_joined, "You are already a member of this channel!"}, State};
-                false -> {reply, ok, add_user(Nick, ChannelName, State)}  % update list of nicks 
+                false -> {reply, ok, add_user(Nick, ChannelAtom, State)}  % update list of nicks 
             end;
         false -> 
-            io:format("Creating new channel with name ~p~n", [ChannelName]),
-            {reply, ok, add_channel(ChannelName, Nick, State)} 
+            channel:new_channel(ChannelAtom, Nick),
+            {reply, ok, add_channel(ChannelAtom, Nick, State)} %reply with updated server state (the map with chanel=>members[])!
     end
 .
 

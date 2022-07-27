@@ -9,7 +9,7 @@ start(ServerAtom) ->
     % - Spawn a new process which waits for a message, handles it, then loops infinitely
     % - Register this process to ServerAtom
     % - Return the process ID
-    genserver:start(ServerAtom, [], fun server_loop_function/2). % Second argument is State = list of channels!
+    genserver:start(ServerAtom, [], fun server_loop_function/2). % Second argument is State = list of channel atoms!
 
 % Stop the server process registered to the given name,
 % together with any other associated processes
@@ -24,7 +24,7 @@ stop(ServerAtom) ->
 %   - returns a tuple: response message, new state
 
 % TODO: MAKE SURE user_already_joined used by gui. At the moment nothing is showed!
-server_loop_function(Channels, {join, _, Nick, Channel}) -> 
+server_loop_function(Channels, {join, ClientPid, Nick, Channel}) -> 
      io:format("Called server loop function. Channels: ~p~n ", [Channels]),
 
     %remove '#' from the name of the channel and convert it to atom for convenience 
@@ -33,13 +33,13 @@ server_loop_function(Channels, {join, _, Nick, Channel}) ->
     case lists:member(ChannelAtom, Channels) of 
         true -> 
             io:format("Channel ~p iS a member of Channels ~p. Trying to join existing channel with Nick=~p~n", [ChannelAtom, Channels, Nick]),
-            case catch(genserver:request(ChannelAtom, {try_join, Nick})) of
+            case catch(genserver:request(ChannelAtom, {try_join, ClientPid})) of
                 ok -> {reply, ok, Channels}; 
                 {error, Atom, Text} -> {reply, {error, Atom, Text}, Channels} %forward error to Client!
             end;
         false -> 
             io:format("Channel ~p IS NOT a member of Channels ~p~n ", [ChannelAtom, Channels]),
-            channel:new_channel(ChannelAtom, Nick),
+            channel:new_channel(ChannelAtom, Channel, ClientPid),
             {reply, ok, [ChannelAtom | Channels]} 
-        end
+        end 
 .

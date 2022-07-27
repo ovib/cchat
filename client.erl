@@ -49,7 +49,14 @@ handle(St, {leave, Channel}) ->
 handle(St, {message_send, Channel, Msg}) ->
     % TODO: Implement this function
     % {reply, ok, St} ;
-    {reply, {error, not_implemented, "message sending not implemented"}, St} ;
+    %{reply, {error, not_implemented, "message sending not implemented"}, St} ;
+        
+    ChannelAtom = list_to_atom(string:slice(Channel, 1)),     
+     Response = genserver:request(ChannelAtom, {message_send, self(), St#client_st.nick, Msg}),
+     case Response of
+        ok -> {reply, Response, St};
+        Error -> {reply, Error, St}
+    end;
 
 % This case is only relevant for the distinction assignment!
 % Change nick (no check, local only)

@@ -16,7 +16,9 @@ start(ServerAtom) ->
 stop(ServerAtom) ->
     % TODO Implement function
     % Return ok
-    not_implemented.
+    genserver:request(ServerAtom, stop_channels),
+    genserver:stop(ServerAtom), %TODO: STOP ALSO CHANNEL PROCESSES!
+    ok.
 
 
 % - This function is the body of the server:
@@ -39,4 +41,11 @@ server_loop_function(Channels, {join, ClientPid, Nick, Channel}) ->
             channel:new_channel(ChannelAtom, Channel, ClientPid),
             {reply, ok, [ChannelAtom | Channels]} 
         end 
+;
+
+server_loop_function(Channels, stop_channels) -> 
+    lists:map(fun (Channel) ->      
+        % io:format("Stopping channels ~p~n ", [Channel]),
+        genserver:stop(Channel) end, 
+    Channels)
 .

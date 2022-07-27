@@ -41,16 +41,20 @@ handle(St, {join, Channel}) ->
 
 % Leave channel
 handle(St, {leave, Channel}) ->
-    % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, {error, not_implemented, "leave not implemented"}, St} ;
+    ChannelAtom = list_to_atom(string:slice(Channel, 1)),  
+    Response = genserver:request(ChannelAtom, {leave, self()}),
+    case Response of
+        ok ->             
+            io:format("Response to client OK ~n ", []),
+            {reply, ok, St} ;
+        Error -> 
+            io:format("Response to client ERROR: ~n ~p ~n ", [Error]),
+            {reply, Error, St}
+    end
+;
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
-    % TODO: Implement this function
-    % {reply, ok, St} ;
-    %{reply, {error, not_implemented, "message sending not implemented"}, St} ;
-        
     ChannelAtom = list_to_atom(string:slice(Channel, 1)),     
      Response = genserver:request(ChannelAtom, {message_send, self(), St#client_st.nick, Msg}),
      case Response of

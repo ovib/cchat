@@ -22,17 +22,24 @@ channel_loop_function([ChannelName, MemberPids], {try_join, Member}) ->
     end
 ;
 
-channel_loop_function([ChannelName, Members], {message_send, MemberPid, Nick, Msg}) ->
-    case lists:member(MemberPid, Members) of 
+channel_loop_function([ChannelName, MemberPids], {message_send, MemberPid, Nick, Msg}) ->
+    case lists:member(MemberPid, MemberPids) of 
         true -> 
             % notify other members of channel that a new message has arrived so they can call the GUI and display it
             % possibile optimization: spawning a new process to send every request (or a new process to send all requests). 
             %                         If channel has a lot of clients dispatching all requests may be costly! channel unresponsive (?)
             lists:map(fun(OtherPid) ->
                 genserver:request(OtherPid, {message_receive, ChannelName, Nick, Msg}) end, 
-                lists:delete(MemberPid, Members) %remove current client from list to avoid double messages!
+                lists:delete(MemberPid, MemberPids) %remove current client from list to avoid double messages!
                 ),
-            {reply, ok, [ChannelName, Members]}; % recieve message on current client
-        false -> {reply, {error, user_not_joined, "You have to be a member of the channel to send messages"}, [ChannelName, Members]}
+            {reply, ok, [ChannelName, MemberPids]}; % respond to current client that message was recieved (so it can be shown on the GUI)
+        false -> {reply, {error, user_not_joined, "You have to be a member of the channel to send messages"}, [ChannelName, MemberPids]}
+    end
+;
+
+channel_loop_function([ChannelName, MemberPids], {leave, MemberPid}) ->
+    case lists:member(MemberPid, MemberPids) of
+        true -> {reply, ok, [ChannelName, MemberPids -- [MemberPid]]}; % remove calling client from the list in state!
+        false -> {reply, {error, user_not_joined, "You are not a member of this channel"}, [ChannelName, MemberPids]}    
     end
 .

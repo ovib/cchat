@@ -18,6 +18,19 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
         server = ServerAtom
     }.
 
+% wrapper of function genserver:request/2
+% needed to handle errors more elegantly: no need to repeat error handling code at every call!
+% TODO: server_not_reached not return on test "join_non_responding_server" but by catching errors this way other tests are not blocked!
+%       investigate why and return here to make sure join_non_responding_server works corectly
+send_request(Pid, Data) ->
+    case catch genserver:request(Pid, Data) of
+        {'EXIT', Reason} ->
+            % io:format("REQUEST FAILED. RETURNED ERROR SERVER_NOT_REACHED ~n ", []),
+                    {error, server_not_reached, Reason};
+        Response -> Response
+    end
+.
+
 % handle/2 handles each kind of request from GUI
 % Parameters:
 %   - the current state of the client (St)
@@ -31,7 +44,7 @@ handle(St, {join, Channel}) ->
     % TODO: Implement this function
     % {reply, ok, St} ;
     %{reply, {error, not_implemented, "join not implemented"}, St} ;
-    Response = genserver:request(St#client_st.server, {join, self(), St#client_st.nick, Channel}), %RESPONSE FROM SERVER
+    Response = send_request(St#client_st.server, {join, self(), St#client_st.nick, Channel}), %RESPONSE FROM SERVER
     case Response of 
         ok ->
             % io:format("Inside cliend. Recieved ok: ~n", []),
@@ -46,7 +59,7 @@ handle(St, {join, Channel}) ->
 % Leave channel
 handle(St, {leave, Channel}) ->
     ChannelAtom = list_to_atom(string:slice(Channel, 1)),  
-    Response = genserver:request(ChannelAtom, {leave, self()}),
+    Response = send_request(ChannelAtom, {leave, self()}),
     case Response of
         ok ->             
             io:format("Response to client OK ~n ", []),
@@ -60,7 +73,7 @@ handle(St, {leave, Channel}) ->
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
     ChannelAtom = list_to_atom(string:slice(Channel, 1)),     
-     Response = genserver:request(ChannelAtom, {message_send, self(), St#client_st.nick, Msg}),
+     Response = send_request(ChannelAtom, {message_send, self(), St#client_st.nick, Msg}),
      case Response of
         ok -> {reply, Response, St};
         Error -> {reply, Error, St}

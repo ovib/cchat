@@ -33,9 +33,13 @@ handle(St, {join, Channel}) ->
     %{reply, {error, not_implemented, "join not implemented"}, St} ;
     Response = genserver:request(St#client_st.server, {join, self(), St#client_st.nick, Channel}), %RESPONSE FROM SERVER
     case Response of 
-        ok -> {reply, ok, St}; % RESPOND TO GUI
-    Error ->
-            {reply, Error, St}
+        ok ->
+            % io:format("Inside cliend. Recieved ok: ~n", []),
+
+            {reply, ok, St}; % RESPOND TO GUI
+    Error -> 
+        % io:format("Inside cliend. Recieved Error: ~p~n", [Error]),
+        {reply, Error, St}
     end
     ;
 

@@ -23,7 +23,6 @@ stop(ServerAtom) ->
 %   - takes 2 params : state, request message
 %   - returns a tuple: response message, new state
 
-% TODO: MAKE SURE user_already_joined used by gui. At the moment nothing is showed!
 server_loop_function(Channels, {join, ClientPid, Nick, Channel}) -> 
      io:format("Called server loop function. Channels: ~p~n ", [Channels]),
 
@@ -33,10 +32,8 @@ server_loop_function(Channels, {join, ClientPid, Nick, Channel}) ->
     case lists:member(ChannelAtom, Channels) of 
         true -> 
             io:format("Channel ~p iS a member of Channels ~p. Trying to join existing channel with Nick=~p~n", [ChannelAtom, Channels, Nick]),
-            case catch(genserver:request(ChannelAtom, {try_join, ClientPid})) of
-                ok -> {reply, ok, Channels}; 
-                {error, Atom, Text} -> {reply, {error, Atom, Text}, Channels} %forward error to Client!
-            end;
+            Response = genserver:request(ChannelAtom, {try_join, ClientPid}),
+            {reply, Response, Channels}; %forward response from Channel to to Client!
         false -> 
             io:format("Channel ~p IS NOT a member of Channels ~p~n ", [ChannelAtom, Channels]),
             channel:new_channel(ChannelAtom, Channel, ClientPid),

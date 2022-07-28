@@ -29,7 +29,10 @@ channel_loop_function([ChannelName, MemberPids], {message_send, MemberPid, Nick,
             % possibile optimization: spawning a new process to send every request (or a new process to send all requests). 
             %                         If channel has a lot of clients dispatching all requests may be costly! channel unresponsive (?)
             lists:map(fun(OtherPid) ->
-                genserver:request(OtherPid, {message_receive, ChannelName, Nick, Msg}) end, 
+                spawn(fun () -> 
+                    genserver:request(OtherPid, {message_receive, ChannelName, Nick, Msg})
+                     end) 
+                    end, 
                 lists:delete(MemberPid, MemberPids) %remove current client from list to avoid double messages!
                 ),
             {reply, ok, [ChannelName, MemberPids]}; % respond to current client that message was recieved (so it can be shown on the GUI)

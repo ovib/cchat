@@ -17,35 +17,28 @@ stop(ServerAtom) ->
     % TODO Implement function
     % Return ok
     genserver:request(ServerAtom, stop_channels),
-    genserver:stop(ServerAtom), %TODO: STOP ALSO CHANNEL PROCESSES!
+    genserver:stop(ServerAtom),
     ok.
-
 
 % - This function is the body of the server:
 %   - takes 2 params : state, request message
 %   - returns a tuple: response message, new state
-
-server_loop_function(Channels, {join, ClientPid, Nick, Channel}) -> 
+server_loop_function(Channels, {join, ClientPid, Channel}) -> 
      io:format("Called server loop function. Channels: ~p~n ", [Channels]),
 
-    %remove '#' from the name of the channel and convert it to atom for convenience 
-    ChannelAtom = list_to_atom(string:slice(Channel, 1)), 
-
-    case lists:member(ChannelAtom, Channels) of 
+    case lists:member(Channel, Channels) of 
         true -> 
-            io:format("Channel ~p iS a member of Channels ~p. Trying to join existing channel with Nick=~p~n", [ChannelAtom, Channels, Nick]),
-            Response = genserver:request(ChannelAtom, {try_join, ClientPid}),
+            Response = genserver:request(list_to_atom(Channel), {try_join, ClientPid}),
             {reply, Response, Channels}; %forward response from Channel to to Client!
         false -> 
-            io:format("Channel ~p IS NOT a member of Channels ~p~n ", [ChannelAtom, Channels]),
-            channel:new_channel(ChannelAtom, Channel, ClientPid),
-            {reply, ok, [ChannelAtom | Channels]} 
+            channel:new_channel(Channel, ClientPid),
+            {reply, ok, [Channel | Channels]} 
         end 
 ;
 
 server_loop_function(Channels, stop_channels) -> 
-    lists:map(fun (Channel) ->      
-        % io:format("Stopping channels ~p~n ", [Channel]),
-        genserver:stop(Channel) end, 
-    Channels)
+    lists:map(fun (Channel) ->
+        genserver:stop(list_to_atom(Channel)) end, 
+    Channels),
+    {reply, ok, Channels}
 .

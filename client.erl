@@ -13,21 +13,21 @@
 % Do not change the signature of this function.
 initial_state(Nick, GUIAtom, ServerAtom) ->
     #client_st{
-        gui = GUIAtom,
         nick = Nick,
+        gui = GUIAtom,
         server = ServerAtom
     }.
 
 % wrapper of function genserver:request/2
 % needed to handle errors more elegantly: no need to repeat error handling code at every call!
-% TODO: server_not_reached not return on test "join_non_responding_server" but by catching errors this way other tests are not blocked!
-%       investigate why and return here to make sure join_non_responding_server works corectly
 send_request(Pid, Data) ->
-    case catch genserver:request(Pid, Data) of
-        {'EXIT', Reason} ->
-            % io:format("REQUEST FAILED. RETURNED ERROR SERVER_NOT_REACHED ~n ", []),
-                    {error, server_not_reached, Reason};
-        Response -> Response
+    try genserver:request(Pid, Data) of
+         Response -> Response
+        % {'EXIT', Reason} ->
+        %     % io:format("REQUEST FAILED. RETURNED ERROR SERVER_NOT_REACHED ~n ", []),
+        %             {error, server_not_reached, Reason};
+    % catch TypeOfError:ExceptionPattern ->  {error, server_not_reached, string:join(["Server cant be reached.", "Type of error: ", TypeOfError, "Exception Pattern: ", ExceptionPattern], "")}   
+    catch Type:Pattern ->  {error, server_not_reached,  io_lib:format("Server can't be reached. Error Type: ~p, ErrorPattern: ~p",[Type, Pattern])}   
     end
 .
 
@@ -44,40 +44,30 @@ handle(St, {join, Channel}) ->
     % TODO: Implement this function
     % {reply, ok, St} ;
     %{reply, {error, not_implemented, "join not implemented"}, St} ;
-    Response = send_request(St#client_st.server, {join, self(), St#client_st.nick, Channel}), %RESPONSE FROM SERVER
+    Response = send_request(St#client_st.server, {join, self(), Channel}), %RESPONSE FROM SERVER
     case Response of 
-        ok ->
-            % io:format("Inside cliend. Recieved ok: ~n", []),
-
-            {reply, ok, St}; % RESPOND TO GUI
-    Error -> 
-        % io:format("Inside cliend. Recieved Error: ~p~n", [Error]),
-        {reply, Error, St}
+        ok -> {reply, ok, St}; % RESPOND TO GUI
+        Error -> {reply, Error, St}
     end
-    ;
+;
 
 % Leave channel
 handle(St, {leave, Channel}) ->
-    ChannelAtom = list_to_atom(string:slice(Channel, 1)),  
-    Response = send_request(ChannelAtom, {leave, self()}),
+    Response = send_request(list_to_atom(Channel), {leave, self()}),
     case Response of
-        ok ->             
-            io:format("Response to client OK ~n ", []),
-            {reply, ok, St} ;
-        Error -> 
-            io:format("Response to client ERROR: ~n ~p ~n ", [Error]),
-            {reply, Error, St}
+        ok -> {reply, ok, St};
+        Error -> {reply, Error, St}
     end
 ;
 
 % Sending message (from GUI, to channel)
-handle(St, {message_send, Channel, Msg}) ->
-    ChannelAtom = list_to_atom(string:slice(Channel, 1)),     
-     Response = send_request(ChannelAtom, {message_send, self(), St#client_st.nick, Msg}),
+handle(St, {message_send, Channel, Msg}) ->  
+     Response = send_request(list_to_atom(Channel), {message_send, self(), St#client_st.nick, Msg}),
      case Response of
         ok -> {reply, Response, St};
         Error -> {reply, Error, St}
-    end;
+    end
+;
 
 % This case is only relevant for the distinction assignment!
 % Change nick (no check, local only)
@@ -103,5 +93,5 @@ handle(St, quit) ->
     {reply, ok, St} ;
 
 % Catch-all for any unhandled requests
-handle(St, Data) ->
+handle(St, _Data) ->
     {reply, {error, not_implemented, "Client does not handle this command"}, St} .

@@ -14,7 +14,6 @@ start(ServerAtom) ->
 % Stop the server process registered to the given name,
 % together with any other associated processes
 stop(ServerAtom) ->
-    % TODO Implement function
     % Return ok
     genserver:request(ServerAtom, stop_channels),
     genserver:stop(ServerAtom),
@@ -24,8 +23,6 @@ stop(ServerAtom) ->
 %   - takes 2 params : state, request message
 %   - returns a tuple: response message, new state
 server_loop_function(Channels, {join, ClientPid, Channel}) -> 
-     io:format("Called server loop function. Channels: ~p~n ", [Channels]),
-
     case lists:member(Channel, Channels) of 
         true -> 
             Response = genserver:request(list_to_atom(Channel), {try_join, ClientPid}),

@@ -22,11 +22,7 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 % needed to handle errors more elegantly: no need to repeat error handling code at every call!
 send_request(Pid, Data) ->
     try genserver:request(Pid, Data) of
-         Response -> Response
-        % {'EXIT', Reason} ->
-        %     % io:format("REQUEST FAILED. RETURNED ERROR SERVER_NOT_REACHED ~n ", []),
-        %             {error, server_not_reached, Reason};
-    % catch TypeOfError:ExceptionPattern ->  {error, server_not_reached, string:join(["Server cant be reached.", "Type of error: ", TypeOfError, "Exception Pattern: ", ExceptionPattern], "")}   
+         Response -> Response 
     catch Type:Pattern ->  {error, server_not_reached,  io_lib:format("Server can't be reached. Error Type: ~p, ErrorPattern: ~p",[Type, Pattern])}   
     end
 .
@@ -41,9 +37,7 @@ send_request(Pid, Data) ->
 
 % Join channel
 handle(St, {join, Channel}) ->
-    % TODO: Implement this function
     % {reply, ok, St} ;
-    %{reply, {error, not_implemented, "join not implemented"}, St} ;
     Response = send_request(St#client_st.server, {join, self(), Channel}), %RESPONSE FROM SERVER
     case Response of 
         ok -> {reply, ok, St}; % RESPOND TO GUI
